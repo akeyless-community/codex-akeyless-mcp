@@ -1,0 +1,38 @@
+{
+  "name": "akeyless-trusted-access",
+  "version": "0.2.0",
+  "description": "Akeyless Trusted Access Layer for Codex — secrets injected at runtime, never exposed to the model",
+  "author": {
+    "name": "Akeyless Community",
+    "url": "https://github.com/akeyless-community"
+  },
+  "homepage": "https://github.com/akeyless-community/codex-akeyless-mcp",
+  "repository": "https://github.com/akeyless-community/codex-akeyless-mcp",
+  "license": "Apache-2.0",
+  "keywords": [
+    "akeyless",
+    "secrets",
+    "security",
+    "mcp",
+    "codex",
+    "runtime-authority",
+    "zero-trust"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Akeyless Trusted Access",
+    "shortDescription": "Secure secrets and infrastructure access for Codex without exposing credentials to the model",
+    "longDescription": "Connect Codex to Akeyless as a trusted access layer. List environment variables, run commands with JIT secret injection, query databases and cloud services via Runtime Authority (ARA), migrate hardcoded secrets, and generate safe akeyless:// references — all without putting secret values in the model context.",
+    "developerName": "Akeyless Community",
+    "category": "Security",
+    "capabilities": ["Read", "Write"],
+    "websiteURL": "https://www.akeyless.io",
+    "defaultPrompt": [
+      "List my Akeyless environment variables and run npm test with secrets injected.",
+      "Scan this repo for hardcoded secrets and migrate them to Akeyless.",
+      "List ARA secrets and describe what infrastructure I can access secretlessly."
+    ],
+    "brandColor": "#0066FF"
+  }
+}

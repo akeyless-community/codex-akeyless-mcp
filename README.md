@@ -81,7 +81,25 @@ export AKEYLESS_AGENT_ID="codex-agent"
 
 See [`.env.example`](.env.example) for all auth options.
 
-### 3. Connect Codex
+## Install as a Codex plugin (marketplace)
+
+For browse-and-install via the Codex plugin directory, use the plugin wrapper in this repo:
+
+```bash
+codex plugin marketplace add akeyless-community/codex-akeyless-mcp
+```
+
+Then in Codex: `/plugins` → **Akeyless Community** → install **Akeyless Trusted Access**.
+
+Or via the community marketplace CLI:
+
+```bash
+npx codex-marketplace add akeyless-community/codex-akeyless-mcp --plugin --project
+```
+
+After install, configure Akeyless credentials in your Codex MCP settings (see [Marketplace guide](docs/MARKETPLACE.md)).
+
+### 3. Connect Codex (direct MCP)
 
 Add to `~/.codex/config.toml`:
 
@@ -214,6 +232,14 @@ AKEYLESS_ACCESS_ID=... AKEYLESS_ACCESS_KEY=... npm start
 ## Publishing
 
 See [docs/PUBLISHING.md](docs/PUBLISHING.md) for npm release instructions.
+
+## Marketplace
+
+See [docs/MARKETPLACE.md](docs/MARKETPLACE.md) for Codex plugin directory submission.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). All changes require approval from `@akeyless-community/cs-admin`.
 
 ## Related projects
 

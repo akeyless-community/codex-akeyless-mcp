@@ -1,0 +1,25 @@
+{
+  "mcp_servers": {
+    "akeyless": {
+      "command": "npx",
+      "args": ["-y", "@akeyless-community/codex-mcp"],
+      "startup_timeout_sec": 20,
+      "tool_timeout_sec": 120,
+      "default_tools_approval_mode": "prompt",
+      "env_vars": [
+        "AKEYLESS_ACCESS_ID",
+        "AKEYLESS_ACCESS_KEY",
+        "AKEYLESS_ACCESS_TYPE",
+        "AKEYLESS_API_KEY",
+        "AKEYLESS_GATEWAY_URL",
+        "AKEYLESS_ARA_GATEWAY_URL",
+        "AKEYLESS_ENVIRONMENT_PREFIX",
+        "AKEYLESS_AGENT_ID",
+        "AKEYLESS_TOKEN",
+        "AKEYLESS_UID_TOKEN",
+        "AKEYLESS_JWT",
+        "AKEYLESS_CLOUD_ID"
+      ]
+    }
+  }
+}
