@@ -1,0 +1,57 @@
+{
+  "name": "@akeyless-community/codex-mcp",
+  "version": "0.2.0",
+  "description": "Akeyless Trusted Access Layer MCP server for OpenAI Codex — secrets injected at runtime, never exposed to the model",
+  "license": "Apache-2.0",
+  "author": "Akeyless Community",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/akeyless-community/codex-akeyless-mcp.git"
+  },
+  "homepage": "https://github.com/akeyless-community/codex-akeyless-mcp#readme",
+  "keywords": [
+    "akeyless",
+    "codex",
+    "openai",
+    "mcp",
+    "secrets",
+    "trusted-access",
+    "runtime"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "akeyless-codex-mcp": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsc -p tsconfig.json --watch",
+    "test": "jest",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "akeyless": "^5.0.25",
+    "akeyless-cloud-id": "^1.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.17.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.7.2"
+  }
+}
