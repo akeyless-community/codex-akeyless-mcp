@@ -5,7 +5,7 @@
   },
   "plugins": [
     {
-      "name": "akeyless-trusted-access",
+      "name": "akeyless-ara",
       "source": {
         "source": "local",
         "path": "./plugins/akeyless"

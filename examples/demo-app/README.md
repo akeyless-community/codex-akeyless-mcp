@@ -1,35 +1,27 @@
-# Example app using Akeyless references (no secret values in repo)
+# Example ARA prompts for Codex
 
-This demo shows how Codex + Akeyless work together:
+Use these after connecting the Akeyless ARA MCP server.
 
-1. Secrets live in Akeyless under `/codex/demo-app/local/`
-2. `.env.example` contains `akeyless://` references only
-3. Codex uses `run_with_environment` to run the app with injected secrets
+## Discovery
 
-## Try it with Codex
+> "List my Akeyless ARA secrets and summarize what databases and cloud services I can access."
 
-After configuring the MCP server (see [README](../README.md)):
+## Database queries
 
-> "List environment variables for `/codex/demo-app/local`, then run `node index.js` with secrets from Akeyless."
+> "Run `SELECT version()` against `/prod/db/postgres-readonly`."
 
-## Manual run (requires Akeyless credentials)
+> "How many rows are in the `users` table? Use the MySQL dynamic secret under `/staging/db`."
 
-```bash
-export AKEYLESS_ACCESS_ID=p-xxxxx
-export AKEYLESS_ACCESS_KEY=your-key
-export AKEYLESS_ENVIRONMENT_PREFIX=/codex/demo-app/local
+## Cloud / service actions
 
-# Using the MCP server's runtime injection locally:
-node -e "
-  const { AkeylessClient } = require('../dist/client');
-  const { runCommandWithEnv } = require('../dist/runtime');
-  (async () => {
-    const client = new AkeylessClient();
-    const vars = await client.listEnvironmentVariables();
-    const env = await client.resolveEnvMap(vars);
-    const result = await runCommandWithEnv({ command: 'node', args: ['index.js'], env, cwd: __dirname });
-    process.stdout.write(result.stdout);
-    process.exit(result.exitCode ?? 1);
-  })();
-"
-```
+> "Use service-execute on `/prod/aws/devops` to list all S3 buckets."
+
+> "Run `kubectl get pods -n default` using the Kubernetes secret `/prod/k8s/admin`."
+
+## Custom MCP
+
+> "List ARA secrets with target type custom-mcp, then service-execute against one to list its capabilities."
+
+## Sub-tools (optional)
+
+> "Call list-sub-tools on `/prod/aws/devops` before running a specific AWS action."

@@ -6,10 +6,9 @@ import type {
   CloudProvider,
 } from './types';
 
-const DEFAULT_GATEWAY = 'https://api.akeyless.io';
-const DEFAULT_ENVIRONMENT_PREFIX = '/codex/default/local';
+const API_V2_SUFFIX = '/api/v2';
+const DEFAULT_GATEWAY_INPUT = 'https://api.akeyless.io';
 const DEFAULT_AGENT_ID = 'codex-agent';
-const DEFAULT_SECRET_CACHE_TTL_MS = 5 * 60 * 1000;
 const DEFAULT_TOKEN_EXPIRY_MARGIN_MS = 60 * 1000;
 
 function readEnv(name: string): string | undefined {
@@ -21,22 +20,13 @@ function readEnv(name: string): string | undefined {
   return trimmed === '' ? undefined : trimmed;
 }
 
-function parsePositiveInt(raw: string | undefined, fallback: number): number {
-  if (raw === undefined) {
-    return fallback;
-  }
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return fallback;
-  }
-  return parsed;
-}
-
 function parseAccessType(raw: string | undefined): AccessType {
   const value = (raw ?? 'access_key').toLowerCase();
+  if (value === 'api_key') {
+    return 'access_key';
+  }
   switch (value) {
     case 'access_key':
-    case 'api_key':
     case 'aws_iam':
     case 'azure_ad':
     case 'gcp':
@@ -63,27 +53,80 @@ function cloudProviderForAccessType(
   return undefined;
 }
 
+function normalizeGatewayInput(input: string): string {
+  const base = input.trim().replace(/\/+$/, '');
+  if (!base) {
+    throw new Error('Gateway URL is required');
+  }
+  return base;
+}
+
+/**
+ * Gateway config port for ARA execution (`PostTargetQuery` / `/config/target_query`).
+ * Accepts either `https://gw:8000` or `https://gw:8000/api/v2` and always returns
+ * the config-port base URL without `/api/v2`.
+ */
+export function parseAraGatewayUrl(input: string): string {
+  const base = normalizeGatewayInput(input);
+  if (base.toLowerCase().endsWith(API_V2_SUFFIX)) {
+    return base.slice(0, -API_V2_SUFFIX.length);
+  }
+  return base;
+}
+
+/**
+ * SDK API base for auth and list-secrets.
+ * Accepts either `https://gw:8000` or `https://gw:8000/api/v2` and always returns
+ * the URL with an `/api/v2` suffix.
+ */
+export function parseSdkGatewayUrl(input: string): string {
+  const base = normalizeGatewayInput(input);
+  if (base.toLowerCase().endsWith(API_V2_SUFFIX)) {
+    return base;
+  }
+  return `${base}${API_V2_SUFFIX}`;
+}
+
+/**
+ * Derive SDK and ARA URLs from a single Gateway address.
+ * - SDK auth + list-secrets → `https://gw:8000/api/v2`
+ * - query-db / service-execute → `https://gw:8000`
+ */
+function resolveGatewayUrls(
+  overrides: AkeylessConfigInput,
+): Pick<AkeylessConfig, 'gatewayUrl' | 'araGatewayUrl'> {
+  const araOverride =
+    overrides.araGatewayUrl ?? readEnv('AKEYLESS_ARA_GATEWAY_URL');
+  const sdkOverride = overrides.gatewayUrl ?? readEnv('AKEYLESS_API_URL');
+  const rawGatewayInput =
+    overrides.gatewayInputUrl ?? readEnv('AKEYLESS_GATEWAY_URL');
+
+  const raw =
+    rawGatewayInput?.trim() ??
+    sdkOverride?.trim() ??
+    DEFAULT_GATEWAY_INPUT;
+
+  const araGatewayUrl = araOverride ?? parseAraGatewayUrl(raw);
+  const gatewayUrl = sdkOverride ?? parseSdkGatewayUrl(raw);
+
+  return {
+    gatewayUrl,
+    araGatewayUrl,
+  };
+}
+
 export function configFromEnv(
   overrides: AkeylessConfigInput = {},
 ): AkeylessConfig {
   const accessType =
     overrides.accessType ?? parseAccessType(readEnv('AKEYLESS_ACCESS_TYPE'));
+  const { gatewayUrl, araGatewayUrl } = resolveGatewayUrls(overrides);
 
   return {
-    gatewayUrl:
-      overrides.gatewayUrl ??
-      readEnv('AKEYLESS_GATEWAY_URL') ??
-      DEFAULT_GATEWAY,
-    araGatewayUrl:
-      overrides.araGatewayUrl ??
-      readEnv('AKEYLESS_ARA_GATEWAY_URL') ??
-      overrides.gatewayUrl ??
-      readEnv('AKEYLESS_GATEWAY_URL') ??
-      DEFAULT_GATEWAY,
-    environmentPrefix:
-      overrides.environmentPrefix ??
-      readEnv('AKEYLESS_ENVIRONMENT_PREFIX') ??
-      DEFAULT_ENVIRONMENT_PREFIX,
+    gatewayUrl,
+    araGatewayUrl,
+    defaultSecretName:
+      overrides.defaultSecretName ?? readEnv('AKEYLESS_DEFAULT_SECRET_NAME'),
     agentId:
       overrides.agentId ??
       readEnv('AKEYLESS_AGENT_ID') ??
@@ -104,24 +147,16 @@ export function configFromEnv(
     cloudId: overrides.cloudId ?? readEnv('AKEYLESS_CLOUD_ID'),
     cloudProvider:
       overrides.cloudProvider ?? cloudProviderForAccessType(accessType),
-    secretCacheTtlMs:
-      overrides.secretCacheTtlMs ??
-      parsePositiveInt(
-        readEnv('AKEYLESS_SECRET_CACHE_TTL_MS'),
-        DEFAULT_SECRET_CACHE_TTL_MS,
-      ),
     tokenExpiryMarginMs:
-      overrides.tokenExpiryMarginMs ??
-      parsePositiveInt(
-        readEnv('AKEYLESS_TOKEN_EXPIRY_MARGIN_MS'),
-        DEFAULT_TOKEN_EXPIRY_MARGIN_MS,
-      ),
+      overrides.tokenExpiryMarginMs ?? DEFAULT_TOKEN_EXPIRY_MARGIN_MS,
   };
 }
 
 export function validateConfig(config: AkeylessConfig): void {
-  if (!config.gatewayUrl.trim()) {
-    throw new Error('gatewayUrl is required');
+  if (!config.gatewayUrl.trim() || !config.araGatewayUrl.trim()) {
+    throw new Error(
+      'Gateway URL is required (set AKEYLESS_GATEWAY_URL to your Gateway address, e.g. https://gw.example.com:8000)',
+    );
   }
 
   if (config.token?.trim()) {
@@ -130,10 +165,9 @@ export function validateConfig(config: AkeylessConfig): void {
 
   switch (config.accessType) {
     case 'access_key':
-    case 'api_key':
       if (!config.accessId?.trim() || !config.accessKey?.trim()) {
         throw new Error(
-          'accessId and accessKey are required for access_key/api_key authentication (or set AKEYLESS_TOKEN)',
+          'accessId and accessKey are required for access_key authentication (or set AKEYLESS_TOKEN)',
         );
       }
       break;
@@ -163,4 +197,15 @@ export function validateConfig(config: AkeylessConfig): void {
     default:
       throw new Error(`Unsupported access type: ${config.accessType as string}`);
   }
+}
+
+/** @deprecated Use parseSdkGatewayUrl and parseAraGatewayUrl */
+export function parseGatewayUrls(input: string): {
+  apiUrl: string;
+  araGatewayUrl: string;
+} {
+  return {
+    apiUrl: parseSdkGatewayUrl(input),
+    araGatewayUrl: parseAraGatewayUrl(input),
+  };
 }
