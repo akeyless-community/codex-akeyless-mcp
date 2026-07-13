@@ -1,7 +1,7 @@
-# Project-scoped Codex MCP config for Akeyless Trusted Access Layer.
+# Project-scoped Codex MCP config for Akeyless ARA.
 # Copy to .codex/config.toml in your project root (requires trusted project).
 
-[mcp_servers.akeyless]
+[mcp_servers.akeyless-ara]
 command = "npx"
 args = ["-y", "@akeyless-community/codex-mcp"]
 enabled = true
@@ -9,31 +9,23 @@ default_tools_approval_mode = "prompt"
 startup_timeout_sec = 20
 tool_timeout_sec = 120
 
-# Auth credentials — prefer env_vars to forward from your shell instead of hardcoding:
-# env_vars = ["AKEYLESS_ACCESS_ID", "AKEYLESS_ACCESS_KEY", "AKEYLESS_ENVIRONMENT_PREFIX", "AKEYLESS_ARA_GATEWAY_URL"]
+# Forward credentials from your shell instead of hardcoding:
+# env_vars = ["AKEYLESS_ACCESS_ID", "AKEYLESS_ACCESS_KEY", "AKEYLESS_GATEWAY_URL", "AKEYLESS_AGENT_ID"]
 
-[mcp_servers.akeyless.env]
+[mcp_servers.akeyless-ara.env]
 AKEYLESS_ACCESS_ID = "p-xxxxx"
 AKEYLESS_ACCESS_KEY = "your-access-key"
-AKEYLESS_ENVIRONMENT_PREFIX = "/codex/my-app/local"
-AKEYLESS_GATEWAY_URL = "https://api.akeyless.io"
-AKEYLESS_ARA_GATEWAY_URL = "https://your-gateway.example.com:8000"
+AKEYLESS_GATEWAY_URL = "https://your-gateway.example.com:8000"
 AKEYLESS_AGENT_ID = "codex-agent"
 
-[mcp_servers.akeyless.tools.store_secret]
-approval_mode = "approve"
-
-[mcp_servers.akeyless.tools.run_with_environment]
+[mcp_servers.akeyless-ara.tools.query-db]
 approval_mode = "prompt"
 
-[mcp_servers.akeyless.tools.create_environment]
+[mcp_servers.akeyless-ara.tools.service-execute]
 approval_mode = "prompt"
 
-[mcp_servers.akeyless.tools.query-db]
-approval_mode = "prompt"
+[mcp_servers.akeyless-ara.tools.list-secrets]
+approval_mode = "auto"
 
-[mcp_servers.akeyless.tools.service-execute]
-approval_mode = "prompt"
-
-[mcp_servers.akeyless.tools.list-secrets]
+[mcp_servers.akeyless-ara.tools.list-sub-tools]
 approval_mode = "auto"

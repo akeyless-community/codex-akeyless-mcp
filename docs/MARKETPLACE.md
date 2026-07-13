@@ -1,6 +1,6 @@
-# Codex Marketplace Listing — Akeyless Trusted Access Layer
+# Codex Marketplace Listing — Akeyless ARA
 
-Guide for listing and distributing the Akeyless Codex plugin.
+Guide for listing and distributing the Akeyless ARA Codex plugin.
 
 ---
 
@@ -15,7 +15,7 @@ codex-akeyless-mcp/
 │   └── skills/akeyless/SKILL.md           # Codex usage skill
 ```
 
-The MCP server itself is published separately as `@akeyless-community/codex-mcp` on npm. The plugin bundles the install command and skill guidance.
+The MCP server is published as `@akeyless-community/codex-mcp` on npm. It exposes **only** ARA tools (`list-secrets`, `query-db`, `service-execute`, `list-sub-tools`) — the same surface as `akeyless mcp-runtime-authority`.
 
 ---
 
@@ -27,7 +27,7 @@ The MCP server itself is published separately as `@akeyless-community/codex-mcp`
 codex plugin marketplace add akeyless-community/codex-akeyless-mcp
 ```
 
-Then in Codex TUI: `/plugins` → select **Akeyless Community** → install **Akeyless Trusted Access**.
+Then in Codex TUI: `/plugins` → select **Akeyless Community** → install **Akeyless ARA**.
 
 Configure Akeyless credentials after install (see README).
 
@@ -40,10 +40,11 @@ npx codex-marketplace add akeyless-community/codex-akeyless-mcp --plugin --proje
 ### Option C — Direct MCP (no plugin wrapper)
 
 ```bash
-codex mcp add akeyless \
+codex mcp add akeyless-ara \
   --env AKEYLESS_ACCESS_ID=p-xxxxx \
   --env AKEYLESS_ACCESS_KEY=your-key \
-  --env AKEYLESS_ENVIRONMENT_PREFIX=/codex/my-app/local \
+  --env AKEYLESS_GATEWAY_URL=https://your-gateway.example.com:8000 \
+  --env AKEYLESS_AGENT_ID=codex-agent \
   -- npx -y @akeyless-community/codex-mcp
 ```
 
@@ -53,43 +54,48 @@ codex mcp add akeyless \
 
 1. Ensure the repo has a valid `plugins/akeyless/.codex-plugin/plugin.json`
 2. Go to https://www.codex-marketplace.com/submit
-3. Enter: `https://github.com/akeyless-community/codex-akeyless-mcp`
-4. Wait for automated validation and manual review
+3. Select **PLUGIN** (not marketplace)
+4. Enter: `https://github.com/akeyless-community/codex-akeyless-mcp`
+5. Wait for automated validation and manual review
 
 ### Listing metadata
 
 | Field | Value |
 |---|---|
-| **Title** | Akeyless Trusted Access Layer for Codex |
-| **Short description** | Give Codex secure access to secrets and infrastructure through Akeyless — credentials stay in the vault, never in the model context. |
+| **Title** | Akeyless ARA for Codex |
+| **Short description** | Secretless database and cloud access for Codex via Akeyless Agentic Runtime Authority — credentials never enter the model context. |
 | **Category** | Security |
 | **npm package** | `@akeyless-community/codex-mcp` |
 | **GitHub** | `github.com/akeyless-community/codex-akeyless-mcp` |
 
 ---
 
-## Submit to OpenAI official Plugin Directory
-
-Self-serve publishing to the official OpenAI Plugin Directory is **coming soon** per [OpenAI plugin docs](https://developers.openai.com/codex/plugins/build).
-
-When available, submit the same repo URL with the plugin manifest at `plugins/akeyless/.codex-plugin/plugin.json`.
-
----
-
-## Tools exposed
+## Tools exposed (ARA only)
 
 | Tool | Description |
 |---|---|
-| `list_environment_variables` | List env var names (no values) |
-| `run_with_environment` | Run commands with JIT secret injection |
-| `list-secrets` | List ARA-enabled dynamic/rotated secrets |
+| `list-secrets` | List ARA-enabled dynamic, rotated, and custom-MCP secrets |
 | `query-db` | Execute database queries (secretless) |
-| `service-execute` | Execute AWS/GCP/Azure/K8s/GitHub actions (secretless) |
-| `scan_for_exposed_secrets` | Find hardcoded credentials in repos |
-| `store_secret` | Migrate secrets into Akeyless |
-| `write_env_reference` | Generate `.env.example` with references |
-| `create_environment` | Bootstrap a new environment prefix |
-| `describe_environment` | Environment summary |
+| `service-execute` | Execute AWS/GCP/Azure/K8s/GitHub/custom-MCP actions (secretless) |
+| `list-sub-tools` | (Optional) Discover sub-tools on a service secret |
+
+---
+
+## Post-install configuration
+
+Users must set Akeyless credentials in Codex after installing the plugin:
+
+```toml
+[plugins."akeyless-ara@akeyless-community".mcp_servers.akeyless-ara.env]
+AKEYLESS_ACCESS_ID = "p-xxxxx"
+AKEYLESS_ACCESS_KEY = "your-access-key"
+AKEYLESS_GATEWAY_URL = "https://your-gateway.example.com:8000"
+AKEYLESS_AGENT_ID = "codex-agent"
+```
+
+`AKEYLESS_GATEWAY_URL` is the only gateway setting — SDK API and ARA bases are derived automatically.
+
+Or forward from shell via `env_vars` (configured in the plugin's `.mcp.json`).
 
 ---
 
@@ -101,21 +107,4 @@ When available, submit the same repo URL with the plugin manifest at `plugins/ak
 - [x] Marketplace catalog (`.agents/plugins/marketplace.json`)
 - [x] Branch protection and CODEOWNERS
 - [ ] Submit to https://www.codex-marketplace.com/submit
-- [ ] Add plugin icon under `plugins/akeyless/assets/` (optional, improves listing)
-- [ ] Submit to OpenAI official directory when available
-
----
-
-## Post-install configuration
-
-Users must set Akeyless credentials in Codex after installing the plugin:
-
-```toml
-[plugins."akeyless-trusted-access@akeyless-community".mcp_servers.akeyless.env]
-AKEYLESS_ACCESS_ID = "p-xxxxx"
-AKEYLESS_ACCESS_KEY = "your-access-key"
-AKEYLESS_ENVIRONMENT_PREFIX = "/codex/my-app/local"
-AKEYLESS_ARA_GATEWAY_URL = "https://your-gateway.example.com:8000"
-```
-
-Or forward from shell via `env_vars` (already configured in the plugin's `.mcp.json`).
+- [ ] Add plugin icon under `plugins/akeyless/assets/` (optional)

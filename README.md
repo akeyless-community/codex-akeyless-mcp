@@ -1,58 +1,12 @@
-# Akeyless Trusted Access Layer for OpenAI Codex
+# Akeyless ARA MCP for OpenAI Codex
 
-An MCP server that makes [Akeyless](https://www.akeyless.io) the **trusted access layer** for [OpenAI Codex](https://developers.openai.com/codex/).
+SDK-based MCP server that brings [Akeyless Agentic Runtime Authority (ARA)](https://docs.akeyless.io/docs/agentic-runtime-authority) to [OpenAI Codex](https://developers.openai.com/codex/) — without installing the Akeyless CLI.
 
-Codex orchestrates. Akeyless holds the secrets. **Secret values never enter the model context.**
+This package exposes **only** the ARA MCP tools (`list-secrets`, `query-db`, `service-execute`, `list-sub-tools`), matching `akeyless mcp-runtime-authority`. It does **not** include static-secret or environment-variable tools.
 
-## Why this exists
+Codex orchestrates. Akeyless holds the credentials. **Secret values never enter the model context.**
 
-Coding agents like Codex need credentials to run apps, call APIs, and deploy code. Today those credentials often live in `.env` files, shell history, or hardcoded in repos — easy to exfiltrate and hard to audit.
-
-This integration gives Codex secure, auditable access without putting secrets in prompts or code:
-
-| Capability | What Codex sees | What actually happens |
-|---|---|---|
-| List environment | Variable **names** + Akeyless paths | No values fetched |
-| Run with environment | Command stdout/stderr (redacted) | Secrets injected into child process env |
-| ARA query / execute | Query or action results only | Credentials used server-side via Gateway |
-| Store secret | Path + env var name | Value written to Akeyless only |
-| Scan for secrets | File + line + redacted snippet | Full values never returned |
-
-## Architecture
-
-```mermaid
-sequenceDiagram
-    participant Dev as Developer
-    participant Codex as OpenAI Codex
-    participant MCP as akeyless-codex-mcp
-    participant AKL as Akeyless Vault
-    participant GW as Akeyless Gateway
-    participant App as Child Process
-
-    Dev->>Codex: "Run my app with the right env"
-    Codex->>MCP: list_environment_variables
-    MCP->>AKL: list-items (metadata only)
-    AKL-->>MCP: names + paths
-    MCP-->>Codex: DATABASE_URL, API_KEY (no values)
-    Codex->>MCP: run_with_environment(npm, start)
-    MCP->>AKL: get-secret-value (server-side)
-    AKL-->>MCP: values (never sent to Codex)
-    MCP->>App: spawn with injected env
-    App-->>MCP: stdout/stderr
-    MCP-->>Codex: redacted output
-
-    Dev->>Codex: "Query prod database"
-    Codex->>MCP: list-secrets
-    MCP->>AKL: list-items (ara-only, metadata)
-    Codex->>MCP: query-db
-    MCP->>GW: /config/target_query
-    GW-->>MCP: query results (no credentials)
-    MCP-->>Codex: JSON results
-```
-
-## Quick start
-
-### 1. Install
+## Install
 
 ```bash
 npm install -g @akeyless-community/codex-mcp
@@ -64,47 +18,29 @@ Or run without installing:
 npx -y @akeyless-community/codex-mcp
 ```
 
-### 2. Configure Akeyless auth
+## Quick start
 
-Set credentials for the MCP server process (not in Codex prompts):
+### 1. Configure auth
+
+Set credentials in the MCP server process environment (not in Codex prompts):
 
 ```bash
 export AKEYLESS_ACCESS_ID="p-xxxxx"
 export AKEYLESS_ACCESS_KEY="your-access-key"
-export AKEYLESS_ENVIRONMENT_PREFIX="/codex/my-app/local"
-export AKEYLESS_GATEWAY_URL="https://api.akeyless.io"
-
-# Required for ARA tools (query-db, service-execute):
-export AKEYLESS_ARA_GATEWAY_URL="https://your-gateway.example.com:8000"
+export AKEYLESS_GATEWAY_URL="https://your-gateway.example.com:8000"
 export AKEYLESS_AGENT_ID="codex-agent"
 ```
 
-See [`.env.example`](.env.example) for all auth options.
+`AKEYLESS_GATEWAY_URL` is the only gateway setting required. The SDK API base (`/api/v2`) and ARA execution base are derived automatically — same pattern as the [Claude connector](https://github.com/akeyless-community/claude-akeyless-connector).
 
-## Install as a Codex plugin (marketplace)
+See [`.env.example`](.env.example) for JWT, Universal Identity, cloud IAM, and token auth.
 
-For browse-and-install via the Codex plugin directory, use the plugin wrapper in this repo:
-
-```bash
-codex plugin marketplace add akeyless-community/codex-akeyless-mcp
-```
-
-Then in Codex: `/plugins` → **Akeyless Community** → install **Akeyless Trusted Access**.
-
-Or via the community marketplace CLI:
-
-```bash
-npx codex-marketplace add akeyless-community/codex-akeyless-mcp --plugin --project
-```
-
-After install, configure Akeyless credentials in your Codex MCP settings (see [Marketplace guide](docs/MARKETPLACE.md)).
-
-### 3. Connect Codex (direct MCP)
+### 2. Connect Codex
 
 Add to `~/.codex/config.toml`:
 
 ```toml
-[mcp_servers.akeyless]
+[mcp_servers.akeyless-ara]
 command = "npx"
 args = ["-y", "@akeyless-community/codex-mcp"]
 enabled = true
@@ -112,141 +48,115 @@ default_tools_approval_mode = "prompt"
 startup_timeout_sec = 20
 tool_timeout_sec = 120
 
-[mcp_servers.akeyless.env]
+[mcp_servers.akeyless-ara.env]
 AKEYLESS_ACCESS_ID = "p-xxxxx"
 AKEYLESS_ACCESS_KEY = "your-access-key"
-AKEYLESS_ENVIRONMENT_PREFIX = "/codex/my-app/local"
-AKEYLESS_GATEWAY_URL = "https://api.akeyless.io"
-AKEYLESS_ARA_GATEWAY_URL = "https://your-gateway.example.com:8000"
+AKEYLESS_GATEWAY_URL = "https://your-gateway.example.com:8000"
 AKEYLESS_AGENT_ID = "codex-agent"
 
-[mcp_servers.akeyless.tools.store_secret]
-approval_mode = "approve"
-
-[mcp_servers.akeyless.tools.run_with_environment]
+[mcp_servers.akeyless-ara.tools.query-db]
 approval_mode = "prompt"
 
-[mcp_servers.akeyless.tools.query-db]
+[mcp_servers.akeyless-ara.tools.service-execute]
 approval_mode = "prompt"
 
-[mcp_servers.akeyless.tools.service-execute]
-approval_mode = "prompt"
+[mcp_servers.akeyless-ara.tools.list-secrets]
+approval_mode = "auto"
 ```
 
 Or use the CLI:
 
 ```bash
-codex mcp add akeyless \
+codex mcp add akeyless-ara \
   --env AKEYLESS_ACCESS_ID=p-xxxxx \
   --env AKEYLESS_ACCESS_KEY=your-key \
-  --env AKEYLESS_ENVIRONMENT_PREFIX=/codex/my-app/local \
-  --env AKEYLESS_ARA_GATEWAY_URL=https://your-gateway.example.com:8000 \
+  --env AKEYLESS_GATEWAY_URL=https://your-gateway.example.com:8000 \
   -- npx -y @akeyless-community/codex-mcp
 ```
 
-For project-scoped config, copy [`examples/.codex/config.toml`](examples/.codex/config.toml) into your repo (requires a trusted project).
+Project-scoped config: copy [`examples/.codex/config.toml`](examples/.codex/config.toml).
 
-### 4. Organize secrets in Akeyless
+### 3. Ask Codex
 
-Static env vars for app bootstrap:
+> "List my Akeyless ARA secrets."
 
-```
-/codex/my-app/local/DATABASE_URL
-/codex/my-app/local/STRIPE_SECRET_KEY
-/codex/my-app/local/OPENAI_API_KEY
-```
+> "Run `SELECT count(*) FROM users` against `/prod/db/postgres-readonly`."
 
-Dynamic secrets for Runtime Authority (ARA):
+> "Use service-execute on `/prod/aws/devops` to list S3 buckets."
 
-```
-/prod/dynamic-secrets/postgres-readonly
-/prod/dynamic-secrets/aws-devops
-```
-
-### 5. Ask Codex
-
-> "List my environment variables and run `npm test` with secrets from Akeyless."
-
-> "List ARA secrets and run `SELECT count(*) FROM users` against the postgres dynamic secret."
-
-> "Scan this repo for hardcoded secrets and migrate them to Akeyless."
-
-## MCP tools
-
-### Environment tools
+## MCP tools (ARA only)
 
 | Tool | Purpose |
 |---|---|
-| `list_environment_variables` | List env var names under an Akeyless prefix |
-| `describe_environment` | Summary of the active environment |
-| `create_environment` | Bootstrap a new `/codex/{project}/{stage}` prefix |
-| `store_secret` | Migrate a secret into Akeyless (approval recommended) |
-| `run_with_environment` | Run a command with JIT secret injection |
-| `write_env_reference` | Generate `.env.example` with `akeyless://` references |
-| `scan_for_exposed_secrets` | Find hardcoded credentials in the repo |
-
-### Runtime Authority (ARA) tools
-
-| Tool | Purpose |
-|---|---|
-| `list-secrets` | List dynamic/rotated secrets available for secretless access |
+| `list-secrets` | List dynamic, rotated, and custom-MCP secrets with `ara_allow_access` |
 | `query-db` | Run database queries (MySQL, PostgreSQL, MSSQL, Oracle, Snowflake, etc.) |
-| `service-execute` | Run AWS, GCP, Azure, Kubernetes, or GitHub actions |
+| `service-execute` | Run AWS, GCP, Azure, Kubernetes, GitHub, or custom-MCP actions |
+| `list-sub-tools` | (Optional) Discover sub-tools on a service secret before `service-execute` |
 
-ARA execute tools require an [Akeyless Gateway](https://docs.akeyless.io/docs/about-akeyless-gateway) with Runtime Authority enabled. Set `AKEYLESS_ARA_GATEWAY_URL` to your gateway configuration port (e.g. `http://127.0.0.1:8000`).
+## Architecture
+
+```mermaid
+sequenceDiagram
+    participant Codex as OpenAI Codex
+    participant MCP as akeyless-codex-ara
+    participant API as Akeyless API
+    participant GW as Akeyless Gateway
+    participant Target as Database / Cloud
+
+    Codex->>MCP: list-secrets
+    MCP->>API: list-items (ara-only: true)
+    API-->>MCP: secret paths + target types
+    MCP-->>Codex: metadata only
+    Codex->>MCP: query-db / service-execute
+    MCP->>GW: /config/target_query
+    GW->>Target: action with JIT credentials
+    Target-->>GW: results
+    GW-->>MCP: JSON results
+    MCP-->>Codex: results (no credentials)
+```
+
+## Requirements
+
+- [Akeyless Gateway](https://docs.akeyless.io/docs/about-akeyless-gateway) with Runtime Authority and AI Insights configured
+- ARA role rules with **Allow Access** on secret paths
+- Dynamic secrets with **Agentic Runtime Authority** enabled in the Console
+
+When `list-secrets` returns zero results, check the `diagnostics.troubleshooting` hints in the response.
+
+## Install as a Codex plugin
+
+```bash
+codex plugin marketplace add akeyless-community/codex-akeyless-mcp
+```
+
+Then in Codex: `/plugins` → **Akeyless Community** → install **Akeyless ARA**.
+
+See [Marketplace guide](docs/MARKETPLACE.md).
 
 ## Security model
 
-**Secretless by design:**
-- Read tools return metadata only
-- `run_with_environment` redacts injected values from stdout/stderr
-- ARA tools use credentials server-side — only action results are returned
-- `scan_for_exposed_secrets` returns redacted snippets only
+- **Secretless by design** — list tools return metadata only; execute tools use credentials server-side via the Gateway
+- **Codex approval** — set `prompt` or `approve` for `query-db` and `service-execute`
+- **Least privilege** — scope RBAC to ARA-enabled secret paths only
+- **Single gateway URL** — point `AKEYLESS_GATEWAY_URL` at your organization's gateway
 
-**Requires Codex approval:**
-- `store_secret` — value transits MCP once during migration
-- `run_with_environment` — spawns commands with real credentials
-- `query-db` / `service-execute` — executes against live infrastructure
-
-**Recommendations:**
-- Set `default_tools_approval_mode = "prompt"` in Codex config
-- Scope RBAC in Akeyless to `/codex/*` for env tools and ARA paths for execute tools
-- Prefer dynamic secrets and ARA for databases and cloud APIs
-- Never commit `.env` files — use `write_env_reference` instead
+See [SECURITY.md](SECURITY.md).
 
 ## Development
 
 ```bash
 cd codex-akeyless-integration
 npm install
-npm run build
 npm test
+npm run build
+npm start
 ```
-
-Run locally:
-
-```bash
-AKEYLESS_ACCESS_ID=... AKEYLESS_ACCESS_KEY=... npm start
-```
-
-## Publishing
-
-See [docs/PUBLISHING.md](docs/PUBLISHING.md) for npm release instructions.
-
-## Marketplace
-
-See [docs/MARKETPLACE.md](docs/MARKETPLACE.md) for Codex plugin directory submission.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md). All changes require approval from `@akeyless-community/cs-admin`.
 
 ## Related projects
 
-- [`@akeyless-community/vercel-runtime`](../vercel-akeyless-runtime) — runtime secret fetch on Vercel
-- [`akeyless mcp-runtime-authority`](../akeyless-main-repo/go/src/client/commands/mcp_runtime_authority.go) — CLI ARA MCP server
-- [`bedrock-agentcore-akeyless-runtime`](../bedrock-agentcore-akeyless-runtime) — AWS AgentCore integration
+- [claude-akeyless-connector](https://github.com/akeyless-community/claude-akeyless-connector) — same ARA surface for Claude Desktop
+- [Akeyless ARA docs](https://docs.akeyless.io/docs/agentic-runtime-authority)
 
 ## License
 
-Apache-2.0 — see [LICENSE](LICENSE).
+Apache-2.0

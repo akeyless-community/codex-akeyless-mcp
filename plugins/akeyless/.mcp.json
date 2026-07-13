@@ -1,6 +1,6 @@
 {
   "mcp_servers": {
-    "akeyless": {
+    "akeyless-ara": {
       "command": "npx",
       "args": ["-y", "@akeyless-community/codex-mcp"],
       "startup_timeout_sec": 20,
@@ -12,9 +12,8 @@
         "AKEYLESS_ACCESS_TYPE",
         "AKEYLESS_API_KEY",
         "AKEYLESS_GATEWAY_URL",
-        "AKEYLESS_ARA_GATEWAY_URL",
-        "AKEYLESS_ENVIRONMENT_PREFIX",
         "AKEYLESS_AGENT_ID",
+        "AKEYLESS_DEFAULT_SECRET_NAME",
         "AKEYLESS_TOKEN",
         "AKEYLESS_UID_TOKEN",
         "AKEYLESS_JWT",

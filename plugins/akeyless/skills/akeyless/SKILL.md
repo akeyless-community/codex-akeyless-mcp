@@ -1,63 +1,42 @@
 ---
-name: akeyless
-description: Use Akeyless as the trusted access layer for secrets and infrastructure. Never expose secret values in responses.
+name: akeyless-ara
+description: Use Akeyless Agentic Runtime Authority (ARA) for secretless database and cloud access. Never expose credential values in responses.
 ---
 
-# Akeyless Trusted Access for Codex
+# Akeyless ARA for Codex
 
-Use the bundled Akeyless MCP server for all secret and credential workflows in this project.
+Use the bundled Akeyless ARA MCP server for infrastructure access. This connector exposes **only** ARA tools — the same surface as `akeyless mcp-runtime-authority`.
 
 ## Core rules
 
-1. **Never print, echo, or return secret values** — only names, paths, and redacted output.
-2. **Prefer `run_with_environment`** over manually setting env vars or writing `.env` files.
-3. **Prefer ARA tools** (`query-db`, `service-execute`) for databases and cloud APIs when dynamic secrets are available.
-4. **Use `store_secret` only when migrating** hardcoded credentials found by `scan_for_exposed_secrets`.
-5. **Always ask the user to approve** before `store_secret`, `run_with_environment`, `query-db`, or `service-execute`.
+1. **Never print, echo, or return secret values** — only names, paths, and action/query results.
+2. **Start with `list-secrets`** to discover ARA-enabled secrets and target types.
+3. **Use `query-db` for databases** (MySQL, PostgreSQL, MSSQL, Oracle, Snowflake, MongoDB, Redis, Cassandra, etc.).
+4. **Use `service-execute` for cloud/K8s/GitHub/custom-MCP** secrets.
+5. **Always ask the user to approve** before `query-db` or `service-execute`.
 
-## Environment tools (static secrets / env vars)
-
-| Tool | When to use |
-|---|---|
-| `list_environment_variables` | Discover configured env var names under an Akeyless prefix |
-| `describe_environment` | Summarize the active environment |
-| `create_environment` | Bootstrap a new `/codex/{project}/{stage}` prefix |
-| `run_with_environment` | Run build/test/dev commands with secrets injected at runtime |
-| `write_env_reference` | Generate `.env.example` with `akeyless://` references (no values) |
-| `scan_for_exposed_secrets` | Find hardcoded credentials in the repository |
-| `store_secret` | Migrate a discovered secret into Akeyless (user approval required) |
-
-## Runtime Authority tools (secretless infrastructure)
+## ARA tools
 
 | Tool | When to use |
 |---|---|
-| `list-secrets` | Discover ARA-enabled dynamic/rotated secrets |
-| `query-db` | Run SQL against MySQL, PostgreSQL, MSSQL, Oracle, Snowflake, etc. |
-| `service-execute` | Run AWS, GCP, Azure, Kubernetes, or GitHub actions |
+| `list-secrets` | Discover ARA-enabled dynamic, rotated, and custom-MCP secrets |
+| `query-db` | Run SQL or DB commands against database secrets |
+| `service-execute` | Run AWS, GCP, Azure, Kubernetes, GitHub, or custom-MCP actions |
+| `list-sub-tools` | (Optional) Discover sub-tools on a service secret before `service-execute` |
 
-ARA execute tools require `AKEYLESS_ARA_GATEWAY_URL` pointing to an Akeyless Gateway configuration port.
+## Typical workflow
 
-## Typical workflows
-
-**Bootstrap a project:**
-1. `create_environment` with prefix `/codex/{app}/{stage}`
-2. `scan_for_exposed_secrets` on the repo
-3. `store_secret` for each finding (with approval)
-4. `write_env_reference` to create `.env.example`
-
-**Run with secrets:**
-1. `list_environment_variables`
-2. `run_with_environment` with the appropriate command
-
-**Query infrastructure secretlessly:**
-1. `list-secrets`
-2. `query-db` or `service-execute` with the chosen secret path
+1. `list-secrets` — find available secrets and target types
+2. (Optional) `list-sub-tools` — for service secrets with many sub-tools
+3. `query-db` or `service-execute` — run the action with `secret-name`, `payload`, and `agent-id`
 
 ## Auth setup
 
-The user must configure Akeyless credentials in Codex MCP env settings (not in prompts):
+Configure in Codex MCP env settings (not in prompts):
 
 - `AKEYLESS_ACCESS_ID` + `AKEYLESS_ACCESS_KEY` (default)
+- `AKEYLESS_GATEWAY_URL` — Gateway address (SDK + ARA URLs derived automatically)
+- `AKEYLESS_AGENT_ID` — auditing identifier for ARA sessions
 - Or `AKEYLESS_ACCESS_TYPE=jwt|universal_identity|aws_iam|azure_ad|gcp`
 - Or pre-issued `AKEYLESS_TOKEN`
 

@@ -1,7 +1,7 @@
 {
   "name": "@akeyless-community/codex-mcp",
-  "version": "0.2.0",
-  "description": "Akeyless Trusted Access Layer MCP server for OpenAI Codex — secrets injected at runtime, never exposed to the model",
+  "version": "1.0.0",
+  "description": "Akeyless Agentic Runtime Authority (ARA) MCP server for OpenAI Codex — secretless database and cloud access, no CLI required",
   "license": "Apache-2.0",
   "author": "Akeyless Community",
   "repository": {
@@ -15,8 +15,9 @@
     "openai",
     "mcp",
     "secrets",
-    "trusted-access",
-    "runtime"
+    "agentic-runtime-authority",
+    "runtime-authority",
+    "ara"
   ],
   "engines": {
     "node": ">=18"

@@ -1,7 +1,7 @@
 {
-  "name": "akeyless-trusted-access",
-  "version": "0.2.0",
-  "description": "Akeyless Trusted Access Layer for Codex — secrets injected at runtime, never exposed to the model",
+  "name": "akeyless-ara",
+  "version": "1.0.0",
+  "description": "Akeyless Agentic Runtime Authority (ARA) MCP server for Codex — secretless database and cloud access",
   "author": {
     "name": "Akeyless Community",
     "url": "https://github.com/akeyless-community"
@@ -16,22 +16,24 @@
     "mcp",
     "codex",
     "runtime-authority",
+    "ara",
+    "agentic-runtime-authority",
     "zero-trust"
   ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
-    "displayName": "Akeyless Trusted Access",
-    "shortDescription": "Secure secrets and infrastructure access for Codex without exposing credentials to the model",
-    "longDescription": "Connect Codex to Akeyless as a trusted access layer. List environment variables, run commands with JIT secret injection, query databases and cloud services via Runtime Authority (ARA), migrate hardcoded secrets, and generate safe akeyless:// references — all without putting secret values in the model context.",
+    "displayName": "Akeyless ARA",
+    "shortDescription": "Secretless database and cloud access for Codex via Agentic Runtime Authority",
+    "longDescription": "Connect Codex to Akeyless Agentic Runtime Authority (ARA). List ARA-enabled secrets, query databases, and execute cloud/Kubernetes/GitHub/custom-MCP actions — credentials stay in Akeyless and never enter the model context. Same tool surface as akeyless mcp-runtime-authority.",
     "developerName": "Akeyless Community",
     "category": "Security",
     "capabilities": ["Read", "Write"],
     "websiteURL": "https://www.akeyless.io",
     "defaultPrompt": [
-      "List my Akeyless environment variables and run npm test with secrets injected.",
-      "Scan this repo for hardcoded secrets and migrate them to Akeyless.",
-      "List ARA secrets and describe what infrastructure I can access secretlessly."
+      "List my Akeyless ARA secrets and summarize what I can access.",
+      "Run SELECT count(*) FROM users against my postgres ARA secret.",
+      "Use service-execute to list S3 buckets with my AWS ARA secret."
     ],
     "brandColor": "#0066FF"
   }
