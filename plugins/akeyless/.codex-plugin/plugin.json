@@ -1,6 +1,6 @@
 {
   "name": "akeyless-ara",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Akeyless Agentic Runtime Authority (ARA) MCP server for Codex — secretless database and cloud access",
   "author": {
     "name": "Akeyless Community",
@@ -28,7 +28,10 @@
     "longDescription": "Connect Codex to Akeyless Agentic Runtime Authority (ARA). List ARA-enabled secrets, query databases, and execute cloud/Kubernetes/GitHub/custom-MCP actions — credentials stay in Akeyless and never enter the model context. Same tool surface as akeyless mcp-runtime-authority.",
     "developerName": "Akeyless Community",
     "category": "Security",
-    "capabilities": ["Read", "Write"],
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
     "websiteURL": "https://www.akeyless.io",
     "defaultPrompt": [
       "List my Akeyless ARA secrets and summarize what I can access.",
