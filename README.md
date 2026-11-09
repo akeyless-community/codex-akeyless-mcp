@@ -1,8 +1,6 @@
-# Akeyless ARA MCP for OpenAI Codex
+# Akeyless Plugin for OpenAI Codex
 
-SDK-based MCP server that brings [Akeyless Agentic Runtime Authority (ARA)](https://docs.akeyless.io/docs/agentic-runtime-authority) to [OpenAI Codex](https://developers.openai.com/codex/) — without installing the Akeyless CLI.
-
-This package exposes **only** the ARA MCP tools (`list-secrets`, `query-db`, `service-execute`, `list-sub-tools`), matching `akeyless mcp-runtime-authority`. It does **not** include static-secret or environment-variable tools.
+OpenAI Codex plugin that connects the Akeyless Model Context Protocol (MCP) server to Codex, without installing or configuring the Akeyless CLI. AI agents can query databases, run actions on AWS, Azure, GCP, Kubernetes and GitHub, and execute commands on Linux (SSH), Windows (WinRM) and LDAP / Active Directory servers through [Akeyless Agentic Runtime Authority (ARA)](https://docs.akeyless.io/docs/agentic-runtime-authority).
 
 Codex orchestrates. Akeyless holds the credentials. **Secret values never enter the model context.**
 
@@ -97,23 +95,46 @@ Project-scoped config: copy [`examples/.codex/config.toml`](examples/.codex/conf
 
 ```mermaid
 sequenceDiagram
-    participant Codex as OpenAI Codex
-    participant MCP as akeyless-codex-ara
-    participant API as Akeyless API
-    participant GW as Akeyless Gateway
-    participant Target as Database / Cloud
+    participant U as User
+    participant C as OpenAI Codex
+    participant M as akeyless-codex-ara
+    participant A as Akeyless API
+    participant G as Akeyless Gateway
+    participant L as AI Quorum (LLMs)
+    participant R as Database / Cloud
 
-    Codex->>MCP: list-secrets
-    MCP->>API: list-items (ara-only: true)
-    API-->>MCP: secret paths + target types
-    MCP-->>Codex: metadata only
-    Codex->>MCP: query-db / service-execute
-    MCP->>GW: /config/target_query
-    GW->>Target: action with JIT credentials
-    Target-->>GW: results
-    GW-->>MCP: JSON results
-    MCP-->>Codex: results (no credentials)
+    U->>C: "Query prod postgres for user count"
+    C->>M: list-secrets
+    M->>A: list-items (authenticated, role-scoped)
+    A-->>M: secret paths + target types (no values)
+    M-->>C: /prod/db/postgres-ro
+    C->>M: query-db (path + SQL)
+    M->>G: POST /config/target_query
+    Note over G: 1. RBAC: ARA execute permission on path
+    Note over G: 2. Input rules (read-only, no multi-statement...)
+    alt Input rule violated
+        G-->>M: BLOCKED (never reaches target)
+    end
+    opt AI Quorum enabled
+        G->>L: validate action
+        L-->>G: verdicts (any deny = block)
+        alt Any model denies
+            G-->>M: BLOCKED
+        end
+    end
+    Note over G: 3. Fetch JIT/rotated credential (stays in GW)
+    G->>R: execute with credential
+    R-->>G: raw results
+    Note over G: 4. Output rules (PII, secrets...)
+    alt Output rule violated
+        G-->>M: BLOCKED / redacted
+    end
+    G-->>M: JSON results (no credentials)
+    M-->>C: { count: 42 }
+    C-->>U: "There are 42 users"
+    Note over G: ARA session recorded for audit
 ```
+
 
 ## Requirements
 
