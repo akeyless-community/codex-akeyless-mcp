@@ -1,6 +1,6 @@
 {
   "name": "akeyless-ara",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Akeyless Agentic Runtime Authority (ARA) MCP server for Codex — secretless database and cloud access",
   "author": {
     "name": "Akeyless Community",
