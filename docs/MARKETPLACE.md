@@ -74,10 +74,10 @@ codex mcp add akeyless-ara \
 
 | Tool | Description |
 |---|---|
-| `list-secrets` | List ARA-enabled dynamic, rotated, and custom-MCP secrets |
+| `list-secrets` | List ARA-enabled dynamic, rotated, and custom-MCP secrets and SSH certificate issuers |
 | `query-db` | Execute database queries (secretless) |
-| `service-execute` | Execute AWS/GCP/Azure/K8s/GitHub/custom-MCP actions (secretless) |
-| `list-sub-tools` | (Optional) Discover sub-tools on a service secret |
+| `service-execute` | Execute AWS/GCP/Azure/K8s/GitHub/custom-MCP actions, or a remote command on SSH/Windows/LDAP hosts (secretless) |
+| `list-sub-tools` | (Optional) Discover sub-tools on a service secret or remote item |
 
 ---
 

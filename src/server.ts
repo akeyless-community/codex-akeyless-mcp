@@ -5,7 +5,12 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
-import { isAraDbProducerType, isAraServiceProducerType, OAuthAuthorizationRequiredError } from './ara';
+import {
+  isAraDbProducerType,
+  isAraRemoteProducerType,
+  isAraServiceProducerType,
+  OAuthAuthorizationRequiredError,
+} from './ara';
 import { AkeylessClient } from './client';
 import { AKEYLESS_SDK_VERSION, CONNECTOR_VERSION } from './version';
 
@@ -16,10 +21,11 @@ Built with Akeyless Node.js SDK v${AKEYLESS_SDK_VERSION}.
 This server exposes only ARA tools — the same surface as \`akeyless mcp-runtime-authority\`. It does not expose static-secret or environment-variable tools.
 
 Workflow:
-1. Call list-secrets to discover ARA-enabled dynamic, rotated, and custom-MCP secrets your role can access.
+1. Call list-secrets to discover ARA-enabled dynamic, rotated, and custom-MCP secrets and SSH certificate issuers your role can access.
 2. For database secrets (MySQL, PostgreSQL, etc.), use query-db with secret-name and payload.
 3. For service secrets (AWS, GCP, Azure, Kubernetes, GitHub, custom MCP), use service-execute with secret-name and payload.
-4. (Optional) Use list-sub-tools on a service secret to discover its exact sub-tool names and parameters before calling service-execute.
+4. For remote items (target_type ssh, windows, rdp, ldap, or linked, and SSH certificate issuers), use service-execute to run one non-interactive command on the host. The payload is either a literal command line (e.g. uptime, Get-Service) or a sub-tool call such as {"tool":"run","arguments":{"command":"<command>","host":"<host>"}} to pick the host, working directory (cwd), or shell, or to upload or download a file. The result has stdout, stderr, exit_code and, when cwd was sent, the cwd to pass to the next call.
+5. (Optional) Use list-sub-tools on a service secret or remote item to discover its exact sub-tool names and parameters before calling service-execute.
 
 Credentials are used server-side via the Akeyless Gateway. Secret values never appear in tool responses.
 
@@ -96,10 +102,17 @@ function buildQueryDbTool(defaultSecretName: string | undefined) {
   };
 }
 
+/** Matches `remoteCallExample` in `remote_call.go`. */
+const REMOTE_CALL_EXAMPLE = '{"tool":"run","arguments":{"command":"<command>","host":"<host>"}}';
+
 function buildServiceExecuteTool(defaultSecretName: string | undefined) {
   let description =
-    'Execute an action against a service (AWS, GCP, Azure, Kubernetes, or GitHub) using Akeyless secret credentials (dynamic or rotated). ' +
-    "Accepts natural language or CLI-style payloads (e.g. 'list all S3 buckets', 'kubectl get pods -n default', 'list open PRs'). " +
+    'Execute an action against a service (AWS, GCP, Azure, Kubernetes, or GitHub) using Akeyless secret credentials (dynamic or rotated), ' +
+    'or run a single non-interactive command on a remote host: a shell command over SSH (SSH targets and SSH certificate issuers) or a PowerShell/CMD command over WinRM (Windows and LDAP items). ' +
+    'A remote command returns stdout, stderr, exit_code and cwd. ' +
+    "Accepts natural language or CLI-style payloads for services (e.g. 'list all S3 buckets', 'kubectl get pods -n default', 'list open PRs') and a literal command line for remote hosts (e.g. 'uptime', 'Get-Service'). " +
+    'To choose the host, the working directory or the shell, or to upload or download a file, send a remote item a sub-tool call as the payload, e.g. ' +
+    `${REMOTE_CALL_EXAMPLE}; list-sub-tools returns the remote sub-tools and their arguments. ` +
     'Returns the results as JSON. Credentials are never exposed.';
   if (!defaultSecretName) {
     description +=
@@ -173,7 +186,7 @@ function buildListSecretsTool() {
 
 function buildListSubToolsTool(defaultSecretName: string | undefined) {
   const description =
-    'OPTIONAL helper for service secrets only (NOT for database secrets — query-db does not need this). ' +
+    'OPTIONAL helper for service secrets and remote items (SSH, Windows, LDAP, SSH certificate issuers); NOT for database secrets — query-db does not need this. ' +
     'Lists the sub-tools (and their parameters) that the service behind the given secret exposes. ' +
     'This call is never required: service-execute already accepts natural language or CLI-style payloads. ' +
     'Use it only when you want to discover the exact sub-tool name and parameters before calling service-execute, ' +
@@ -290,7 +303,7 @@ export async function handleToolCall(
         secrets: listed.secrets,
         ...(listed.diagnostics ? { diagnostics: listed.diagnostics } : {}),
         note: listed.secrets.length
-          ? 'Use query-db for database secrets or service-execute for cloud/K8s/GitHub/custom-MCP secrets.'
+          ? 'Use query-db for database secrets, or service-execute for cloud/K8s/GitHub/custom-MCP secrets and for remote commands on SSH, Windows, RDP, LDAP, linked, and SSH certificate issuer items.'
           : 'No ARA secrets matched. See diagnostics.troubleshooting for likely RBAC or ARA setup fixes.',
       };
     }
@@ -347,9 +360,13 @@ export async function handleToolCall(
 
       const secrets = await client.listAraSecrets();
       const secret = secrets.find((s) => s.name === secretName);
-      if (secret?.target_type && !isAraServiceProducerType(secret.target_type)) {
+      if (
+        secret?.target_type &&
+        !isAraServiceProducerType(secret.target_type) &&
+        !isAraRemoteProducerType(secret.target_type)
+      ) {
         throw new Error(
-          `Secret "${secretName}" is not a service secret. Use query-db instead.`,
+          `Secret "${secretName}" is not a service secret or remote item. Use query-db instead.`,
         );
       }
 

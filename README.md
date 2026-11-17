@@ -88,10 +88,36 @@ Project-scoped config: copy [`examples/.codex/config.toml`](examples/.codex/conf
 
 | Tool | Purpose |
 |---|---|
-| `list-secrets` | List dynamic, rotated, and custom-MCP secrets with `ara_allow_access` |
+| `list-secrets` | List dynamic, rotated, and custom-MCP secrets and SSH certificate issuers with `ara_allow_access` |
 | `query-db` | Run database queries (MySQL, PostgreSQL, MSSQL, Oracle, Snowflake, etc.) |
-| `service-execute` | Run AWS, GCP, Azure, Kubernetes, GitHub, or custom-MCP actions |
-| `list-sub-tools` | (Optional) Discover sub-tools on a service secret before `service-execute` |
+| `service-execute` | Run AWS, GCP, Azure, Kubernetes, GitHub, or custom-MCP actions, or a remote command on an SSH, Windows, or LDAP host |
+| `list-sub-tools` | (Optional) Discover sub-tools on a service secret or remote item before `service-execute` |
+
+### Remote commands (SSH, Windows, LDAP)
+
+`service-execute` also runs one non-interactive command on a remote host, with the credentials of the item you name. The Gateway decides how to run it from the item's target type:
+
+| Item | `target_type` in list-secrets | Runs over |
+|---|---|---|
+| Rotated secret on an SSH target | `ssh` | SSH |
+| Rotated secret on a Windows target | `windows` | WinRM |
+| Rotated secret on a linked target | `linked` | SSH or WinRM, on one of the linked hosts |
+| RDP dynamic secret | `rdp` | SSH or WinRM, as the temporary user |
+| LDAP (Active Directory) rotated or dynamic secret | `ldap` | WinRM over HTTPS, as the domain user |
+| SSH certificate issuer (`secret_type: ssh-cert-issuer`) | `ssh` | SSH, with a short-lived certificate signed for the call |
+
+The payload is either a plain command line (`uptime`, `Get-Service`) or a sub-tool call for anything else:
+
+```json
+{"tool":"run","arguments":{"command":"systemctl status nginx","host":"web1.corp","cwd":"/var/log"}}
+```
+
+- `run` takes `command`, plus optional `host` (required when the item has more than one host; the error lists them), `cwd`, `shell` (`powershell` or `cmd`, WinRM only), `host_key_fingerprint` (`SHA256:<base64>`, SSH only), and `remote_user` (SSH certificate issuers only).
+- `upload` (`remote_path`, base64 `content`, at most 512 KB) and `download` (`remote_path`) move one file.
+- A run returns `stdout`, `stderr`, `exit_code`, `truncated`, and, when sent with `cwd` or run in PowerShell, the `cwd` the command ended in. Codex passes that `cwd` back on the next call, so a series of commands behaves like one shell session.
+- `list-sub-tools` on a remote item returns this catalog without connecting to the host.
+
+The same ARA gates apply as for databases: `ara_allow_access`, input rules (the Gateway ships default rules per target type), AI validation, output rules, and an ARA session record. Remote commands need Gateway 5.6.0 or later; an older Gateway answers `unsupported secret type`. A remote call can take up to 3.5 minutes on the Gateway.
 
 ## Architecture
 
